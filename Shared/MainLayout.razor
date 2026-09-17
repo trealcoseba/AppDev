@@ -1,0 +1,24 @@
+﻿@inherits LayoutComponentBase
+
+<div class="app-wrapper">
+    <header class="navbar">
+        <div class="brand">
+            <div class="cit-logo">🎓</div>
+            <div class="brand-text">
+                <span class="brand-title">QueueLess</span>
+                <span class="brand-subtitle">CIT-U</span>
+            </div>
+        </div>
+
+        <nav class="nav-links">
+            <NavLink href="" Match="NavLinkMatch.All" class="nav-btn">Home</NavLink>
+            <NavLink href="student" class="nav-btn">Get Ticket</NavLink>
+            <NavLink href="staff" class="nav-btn">Staff</NavLink>
+            <NavLink href="dashboard" class="nav-btn">Dashboard</NavLink>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        @Body
+    </main>
+</div>

@@ -1,0 +1,124 @@
+@page "/dashboard"
+@inject QueueService QueueService
+@implements IDisposable
+
+<div class="container page-body">
+    <div class="page-heading">
+        <div class="heading-icon">📺</div>
+        <div>
+            <h2>Live Queue Display</h2>
+            <p class="text-muted">Real-time queue status for all university offices.</p>
+        </div>
+    </div>
+
+    <!-- Department Queue Boards -->
+    <div class="dept-grid">
+        @foreach (var dept in Departments)
+        {
+            var nowServing = QueueService.Tickets.FirstOrDefault(t => t.Department == dept && t.Status == TicketStatus.NowServing);
+            var waitingList = QueueService.Tickets.Where(t => t.Department == dept && t.Status == TicketStatus.Waiting).ToList();
+
+            <div class="dept-card">
+                <div class="dept-banner">
+                    <div class="banner-title">
+                        <span class="dept-icon">🏛️</span> @dept
+                    </div>
+                    <span class="waiting-badge">@waitingList.Count waiting</span>
+                </div>
+
+                <div class="dept-serving-section">
+                    <div class="micro-label">NOW SERVING</div>
+                    <div class="serving-box">
+                        <span class="serving-number">@(nowServing?.TicketNumber ?? "---")</span>
+                        @if (nowServing != null)
+                        {
+                            <span class="window-pill">@(string.IsNullOrEmpty(nowServing.Teller) ? "Counter" : nowServing.Teller)</span>
+                        }
+                    </div>
+                    @if (nowServing != null)
+                    {
+                        <div class="serving-student-sub">@nowServing.StudentName • @nowServing.Service</div>
+                    }
+                </div>
+
+                <div class="dept-upnext-section">
+                    <div class="micro-label">UP NEXT</div>
+                    @if (waitingList.Any())
+                    {
+                        @for (int i = 0; i < Math.Min(3, waitingList.Count); i++)
+                        {
+                            var item = waitingList[i];
+                            <div class="upnext-row">
+                                <span class="index">@(i + 1)</span>
+                                <span class="ticket">@item.TicketNumber</span>
+                                <span class="service text-truncate">@item.Service</span>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="no-next">No tickets in line</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Recent History -->
+    <div class="history-section">
+        <h4 class="section-title">RECENT ACTIVITY</h4>
+        <div class="history-table">
+            @if (QueueService.History.Any())
+            {
+                @foreach (var hist in QueueService.History.Take(4))
+                {
+                    <div class="history-row">
+                        <span class="hist-ticket">@hist.TicketNumber</span>
+                        <span>@hist.StudentName</span>
+                        <span class="hist-service">@hist.Department — @hist.Service</span>
+                        <span class="badge-pill @(hist.Status == TicketStatus.Completed ? "green-pill" : "blue-pill")">
+                            @hist.Status
+                        </span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="p-3 text-muted text-center">No completed transactions yet today.</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _isDisposed = false;
+
+    private readonly List<string> Departments = new()
+    {
+        "Registrar Office",
+        "Finance and Accounting Office",
+        "Enrollment Technical Office"
+    };
+
+    protected override void OnInitialized()
+    {
+        QueueService.OnChange += OnQueueUpdated;
+    }
+
+    private void OnQueueUpdated()
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (!_isDisposed)
+            {
+                StateHasChanged();
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        QueueService.OnChange -= OnQueueUpdated;
+    }
+}

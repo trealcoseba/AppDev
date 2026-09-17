@@ -1,0 +1,140 @@
+@page "/student"
+@inject QueueService QueueService
+
+<div class="kiosk-container">
+    <div class="kiosk-card">
+        @if (generatedTicket == null)
+        {
+            <div class="kiosk-header">
+                <span class="kiosk-badge">CIT-U STUDENT KIOSK</span>
+                <h2>Get Your Queue Ticket</h2>
+                <p>Select your office and service to reserve your spot.</p>
+            </div>
+
+            <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-control" required placeholder="e.g. Lemuel Vincent Alcoseba III" @bind="formModel.Name" />
+                </div>
+
+                <div class="form-group">
+                    <label>Student ID Number</label>
+                    <input type="text" class="form-control" required placeholder="e.g. 21-1234-567" @bind="formModel.StudentId" />
+                </div>
+
+                <div class="form-group">
+                    <label>Department / Office</label>
+                    <select class="form-control" @onchange="OnDepartmentChanged">
+                        @foreach (var dept in Departments)
+                        {
+                            <option value="@dept">@dept</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Transaction / Purpose</label>
+                    <select class="form-control" @bind="formModel.Service">
+                        @foreach (var s in AvailableServices)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    Generate Ticket ➔
+                </button>
+            </EditForm>
+        }
+        else
+        {
+            <!-- TICKET CONFIRMATION VIEW -->
+            <div class="ticket-receipt">
+                <div class="receipt-cutout"></div>
+                <div class="receipt-header">
+                    <span class="uni-name">CEBU INSTITUTE OF TECHNOLOGY - UNIVERSITY</span>
+                    <h3 class="receipt-title">QueueLess Electronic Pass</h3>
+                </div>
+
+                <div class="receipt-body">
+                    <div class="receipt-number">@generatedTicket.TicketNumber</div>
+                    <div class="receipt-dept">@generatedTicket.Department</div>
+
+                    <div class="receipt-details">
+                        <div><span>Student:</span> <strong>@generatedTicket.StudentName</strong></div>
+                        <div><span>ID No:</span> <strong>@generatedTicket.StudentId</strong></div>
+                        <div><span>Service:</span> <strong>@generatedTicket.Service</strong></div>
+                        <div><span>Time:</span> <strong>@generatedTicket.CreatedAt.ToString("h:mm tt")</strong></div>
+                    </div>
+
+                    <div class="ahead-badge">
+                        👥 <strong>@(QueueService.Tickets.Count(t => t.Department == generatedTicket.Department && t.Status == TicketStatus.Waiting) - 1)</strong> students ahead of you
+                    </div>
+                </div>
+
+                <div class="receipt-footer">
+                    <p>Please monitor the Live Dashboard for your number.</p>
+                    <button class="btn btn-outline btn-block" @onclick="() => generatedTicket = null">
+                        + Get Another Ticket
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private FormModel formModel = new();
+    private QueueTicket? generatedTicket;
+
+    private readonly List<string> Departments = new()
+    {
+        "Registrar Office",
+        "Finance and Accounting Office",
+        "Enrollment Technical Office"
+    };
+
+    private List<string> AvailableServices = new();
+
+    protected override void OnInitialized()
+    {
+        formModel.Department = Departments[0];
+        UpdateServices();
+    }
+
+    private void OnDepartmentChanged(ChangeEventArgs e)
+    {
+        formModel.Department = e.Value?.ToString() ?? Departments[0];
+        UpdateServices();
+    }
+
+    private void UpdateServices()
+    {
+        AvailableServices = formModel.Department switch
+        {
+            "Registrar Office" => new List<string> { "Clearance Signing", "Transcript of Records", "Enrollment Validation", "Diploma Request", "Certificates (COE/COG)" },
+            "Finance and Accounting Office" => new List<string> { "Tuition Payment", "Promissory Note", "Refund Request", "Exam Permit Clearance" },
+            _ => new List<string> { "Change of Subject", "Adding/Dropping", "Overload Form Approval", "Curriculum Inquiries" }
+        };
+        formModel.Service = AvailableServices.FirstOrDefault() ?? "";
+    }
+
+    private void HandleSubmit()
+    {
+        generatedTicket = QueueService.CreateTicket(
+            formModel.Department,
+            formModel.Service,
+            formModel.Name,
+            formModel.StudentId
+        );
+    }
+
+    public class FormModel
+    {
+        public string Name { get; set; } = "";
+        public string StudentId { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Service { get; set; } = "";
+    }
+}
